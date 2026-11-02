@@ -50,7 +50,7 @@ export function candidatesFrom(sessions: Session[]): Candidate[] {
           recentCommands: prev.toolCalls.filter((c) => c.name === "Bash").map((c) => c.summary),
         });
       }
-      lastRequest = text;
+      if (text && !PURE_ACK.test(text)) lastRequest = text;
     }
   }
   return out;
