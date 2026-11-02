@@ -1,5 +1,5 @@
-// --weekly: run the report every Monday morning and send a desktop notification
-// when there's something new. It only reports; nothing is applied without you.
+// --weekly: run the report quietly every Monday morning and save it to
+// ~/.improvemyagent/reports. No pop-ups, and nothing is applied without you.
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -16,7 +16,7 @@ const LOG = () => join(STATE_DIR, "weekly.log");
  * your machine unattended. Running --weekly again moves the pin.
  */
 export function weeklyCommand(version: string): string {
-  return process.env.IMA_WEEKLY_CMD ?? `npx -y improvemyagent@${version} --report --notify`;
+  return process.env.IMA_WEEKLY_CMD ?? `npx -y improvemyagent@${version} --report`;
 }
 
 const xml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -41,10 +41,10 @@ export function plistFor(cmd: string, path: string, log: string): string {
 `;
 }
 
-/** cron has an empty environment: carry PATH (to find node and your agent) and the desktop session (for notify-send). */
+/** cron has an empty environment: carry PATH so it can find node and your agent. */
 export function cronLine(cmd: string, env: NodeJS.ProcessEnv, log: string): string {
-  const vars = ["PATH", "DISPLAY", "DBUS_SESSION_BUS_ADDRESS"].filter((k) => env[k]).map((k) => `${k}='${env[k]}'`);
-  return `0 10 * * 1 ${[...vars, cmd].join(" ")} >> '${log}' 2>&1 ${MARK}`;
+  const path = env.PATH ? `PATH='${env.PATH}' ` : "";
+  return `0 10 * * 1 ${path}${cmd} >> '${log}' 2>&1 ${MARK}`;
 }
 
 function crontab(): string {
@@ -95,14 +95,4 @@ export function weeklyIsOn(): boolean {
   if (process.platform === "darwin") return existsSync(PLIST());
   if (process.platform === "linux") return crontab().includes(MARK);
   return false;
-}
-
-/** Best-effort desktop notification; the report is in ~/.improvemyagent/reports either way. */
-export function notify(message: string) {
-  if (process.platform === "darwin") {
-    const q = (s: string) => JSON.stringify(s);
-    spawnSync("osascript", ["-e", `display notification ${q(message)} with title "improvemyagent" subtitle "Run: npx improvemyagent"`], { stdio: "ignore" });
-  } else if (process.platform === "linux") {
-    spawnSync("notify-send", ["improvemyagent", `${message}\nRun: npx improvemyagent`], { stdio: "ignore" });
-  }
 }

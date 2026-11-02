@@ -9,11 +9,11 @@ process.env.IMA_STATE_DIR = mkdtempSync(join(tmpdir(), "ima-state-"));
 const { cronLine, plistFor, weeklyCommand } = await import("../src/schedule.ts");
 
 test("weekly runs are pinned to the installed version and only report", () => {
-  assert.equal(weeklyCommand("0.2.2"), "npx -y improvemyagent@0.2.2 --report --notify");
+  assert.equal(weeklyCommand("0.2.2"), "npx -y improvemyagent@0.2.2 --report");
 });
 
 test("launchd plist is valid and runs Mondays at 10:00 with your PATH", () => {
-  const plist = plistFor("npx -y improvemyagent@0.2.2 --report --notify", "/opt/homebrew/bin:/usr/bin", "/tmp/w.log");
+  const plist = plistFor("npx -y improvemyagent@0.2.2 --report", "/opt/homebrew/bin:/usr/bin", "/tmp/w.log");
   assert.match(plist, /<key>Weekday<\/key><integer>1<\/integer><key>Hour<\/key><integer>10<\/integer>/);
   assert.match(plist, /\/opt\/homebrew\/bin:\/usr\/bin/);
   if (process.platform === "darwin") {
@@ -23,7 +23,7 @@ test("launchd plist is valid and runs Mondays at 10:00 with your PATH", () => {
   }
 });
 
-test("cron line carries PATH and the desktop session, and is tagged for removal", () => {
-  const line = cronLine("npx -y improvemyagent@0.2.2 --report --notify", { PATH: "/usr/bin", DISPLAY: ":0", HOME: "/h" }, "/tmp/w.log");
-  assert.equal(line, "0 10 * * 1 PATH='/usr/bin' DISPLAY=':0' npx -y improvemyagent@0.2.2 --report --notify >> '/tmp/w.log' 2>&1 # improvemyagent weekly");
+test("cron line carries PATH and is tagged for removal", () => {
+  const line = cronLine("npx -y improvemyagent@0.2.2 --report", { PATH: "/usr/bin", HOME: "/h" }, "/tmp/w.log");
+  assert.equal(line, "0 10 * * 1 PATH='/usr/bin' npx -y improvemyagent@0.2.2 --report >> '/tmp/w.log' 2>&1 # improvemyagent weekly");
 });

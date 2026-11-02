@@ -27,7 +27,7 @@ import { available, BACKENDS, llm, probe, setBackend, setFallbacks, usage, type 
 import { STATE_DIR } from "./paths.ts";
 import { createHash } from "node:crypto";
 import { truncate } from "./clean.ts";
-import { notify, weeklyIsOn, weeklyOff, weeklyOn } from "./schedule.ts";
+import { weeklyIsOn, weeklyOff, weeklyOn } from "./schedule.ts";
 import { CODEX_RECENT, FOCUS, fastPrompt, parseLine, similar, startApiStream, startClaudeStream, startCodexStream, systemFor, type Stream } from "./fast.ts";
 
 const LAST_RUN = join(STATE_DIR, "last-run.json");
@@ -50,7 +50,6 @@ const { values: args, positionals } = parseArgs({
     skip: { type: "string" },
     help: { type: "boolean", short: "h", default: false },
     weekly: { type: "boolean", default: false },
-    notify: { type: "boolean", default: false },
   },
 });
 
@@ -73,8 +72,8 @@ Usage: npx improvemyagent [options]
                     opencode or anthropic-api (default: the first one installed)
   --skip <tools>    skip some tools, e.g. --skip cursor,gemini
                     (reads Claude Code, Codex, OpenCode, Gemini CLI and Cursor)
-  --weekly          check in every Monday and notify you when there's something new
-                    (only reports, never applies; --weekly off to stop)
+  --weekly          re-run the report quietly every Monday, saved to ~/.improvemyagent/reports
+                    (never applies anything; --weekly off to stop)
 
 Everything runs locally through the coding agent you already use. Nothing is uploaded.`);
   process.exit(0);
@@ -352,7 +351,6 @@ async function fastRun(o: { sessions: Session[]; installed: Backend[]; streams?:
   const roots = new Map([...repos].map(([k, r]) => [k, r.root]));
   const allTools = new Set(sessions.map((x) => x.tool));
   const store = loadRules();
-  const known = new Set(store.map((x) => x.id));
   const saved = store.filter((x) => x.lifecycle === "suggested");
   const appliedRules = store.filter((x) => x.lifecycle === "applied");
   const existing = files
@@ -462,16 +460,6 @@ async function fastRun(o: { sessions: Session[]; installed: Backend[]; streams?:
   saveRules(store);
   for (const r of rules) r.baseline = baselineFor(r, sessions);
   const tracked = store.filter((x) => x.lifecycle === "applied").map((x) => ({ rule: x, tracking: track(x, sessions) }));
-  if (args.notify) {
-    // Weekly run: only ping when there's something to look at.
-    const fresh = rules.filter((r) => !known.has(r.id)).length;
-    const n = (v: string) => tracked.filter((t) => t.tracking?.verdict === v).length;
-    const parts = [fresh && `${fresh} new rule${fresh === 1 ? "" : "s"} to review`, n("working") && `${n("working")} working`, n("not_sticking") && `${n("not_sticking")} not sticking`].filter(Boolean);
-    if (parts.length) {
-      notify(parts.join(" · "));
-      console.log(pc.dim(`Notified: ${parts.join(" · ")}`));
-    }
-  }
   const stats: Stats = {
     tools: [...allTools].join(" + "),
     messages,
@@ -533,7 +521,7 @@ async function finish(o: Finish) {
     const files = [...new Set(rules.flatMap((r) => r.destinations.map((d) => basename(d))))].join(" / ") || "AGENTS.md";
     p.outro(`Add to ${files}:  ${pc.bold(pc.green(`npx improvemyagent --apply ${example}`))}   ${pc.dim("or")}   ${pc.bold(pc.green("--apply all"))}`);
     console.log(pc.dim(`   Receipts: ${tilde(reportPath)}`));
-    if (!args.notify && !weeklyIsOn()) console.log(pc.dim(`   Check in every week: npx improvemyagent --weekly`));
+    if (!weeklyIsOn()) console.log(pc.dim(`   Check in every week: npx improvemyagent --weekly`));
     return;
   }
 
@@ -611,7 +599,7 @@ function weekly(off: boolean) {
   if (off) return p.outro(weeklyOff() ? "Weekly check-in is off." : "Weekly check-in wasn't on.");
   const version = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
   const when = weeklyOn(version);
-  p.outro(`${when}, improvemyagent reads your week and notifies you if there's a new rule or one isn't sticking.\n   It never applies anything by itself. Stop it with: npx improvemyagent --weekly off`);
+  p.outro(`${when}, improvemyagent quietly re-reads your week and saves a fresh report to ~/.improvemyagent/reports.\n   No pop-ups, and it never applies anything. Stop it with: npx improvemyagent --weekly off`);
 }
 
 main().catch((e) => {
