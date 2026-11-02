@@ -9,7 +9,6 @@
   "files": [
     "dist",
     "guard",
-    "docs/screenshot.png",
     "README.md",
     "LICENSE"
   ],
