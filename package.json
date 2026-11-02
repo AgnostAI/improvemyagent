@@ -17,7 +17,7 @@
     "build": "tsc",
     "dev": "node src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.ts",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "engines": {
