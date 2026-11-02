@@ -1,0 +1,21 @@
+# improvemyagent
+
+> Reads a developer's local coding-agent history (Claude Code, Codex, OpenCode, Gemini CLI, Cursor), finds the corrections they keep repeating, and proposes rules for AGENTS.md / CLAUDE.md. Runs locally on the agent login they already have, in about 10 seconds. Nothing is uploaded and nothing is written without approval.
+
+## Use it
+
+1. Run `npx -y improvemyagent --report`. It prints numbered rules, each with how often it came up and which file it belongs in.
+2. Show the user the rules and ask which numbers to apply. Never apply without an explicit choice.
+3. Run `npx -y improvemyagent --apply 1,3` (or `--apply all`). Repo files are left uncommitted, and backups go to `~/.improvemyagent/backups`.
+
+Add `--deep` to step 1 for a slower pass (about a minute) that also flags stale or conflicting lines in existing instruction files.
+
+## Install as a skill
+
+`npx skills add AgnostAI/improvemyagent`
+
+## Links
+
+- Source: https://github.com/AgnostAI/improvemyagent
+- npm: https://www.npmjs.com/package/improvemyagent
+- Built by Agnost AI: https://agnost.ai

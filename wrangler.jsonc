@@ -1,5 +1,5 @@
 // improvemyagent.com: the landing page in site/, served as static assets.
-// Deployed by .github/workflows/deploy-site.yml on every push to main.
+// Deploy with `npm run deploy:site` (needs a wrangler login to the Agnost AI account).
 {
   "name": "improvemyagent",
   "account_id": "40a25834bab84567f2dc6774ef6bb8c7",

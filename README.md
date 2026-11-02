@@ -88,14 +88,18 @@ Because AI-written context files tend to make agents *worse*. ETH Zurich found t
 
 ## As a skill
 
-There is also an `improvemyagent` skill that lets your agent run the report, walk you through it in the conversation, and apply the rules you pick.
+There is also an `improvemyagent` skill, so your agent can run the report, walk you through it, and apply the rules you pick.
 
-- **Claude Code:**
-  ```
-  /plugin marketplace add ShubhamPalriwala/improvemyagent
-  /plugin install improvemyagent@improvemyagent
-  ```
-- **Codex and other agents that read `SKILL.md`:** copy [`skills/improvemyagent`](skills/improvemyagent) into your skills folder (for Codex, `~/.codex/skills/`).
+```bash
+npx skills add AgnostAI/improvemyagent
+```
+
+That installs it for Claude Code, Codex, Cursor, OpenCode and [the other agents `skills` supports](https://github.com/vercel-labs/skills). In Claude Code you can also use the plugin:
+
+```
+/plugin marketplace add AgnostAI/improvemyagent
+/plugin install improvemyagent@improvemyagent
+```
 
 ## Hooks
 
