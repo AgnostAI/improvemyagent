@@ -1,6 +1,6 @@
 // --weekly: run the report quietly every Monday morning. When it finds something
-// new, your next Claude Code session opens with one line about it (no pop-ups),
-// and nothing is ever applied without you.
+// new, your next agent session opens with one line about it (no pop-ups), and
+// nothing is ever applied without you.
 import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -14,7 +14,6 @@ const PLIST = () => join(homedir(), "Library", "LaunchAgents", `${LABEL}.plist`)
 const LOG = () => join(STATE_DIR, "weekly.log");
 const INBOX = () => join(STATE_DIR, "inbox.json");
 const HOOK = () => join(STATE_DIR, "inbox-hook.mjs");
-const SETTINGS = () => process.env.IMA_CLAUDE_SETTINGS ?? join(homedir(), ".claude", "settings.json");
 
 /**
  * Pinned to the version that set it up, so a later npm release never runs on
@@ -74,43 +73,119 @@ export function clearNote() {
   rmSync(INBOX(), { force: true });
 }
 
-const isOurs = (h: any) => h?.hooks?.some((x: any) => String(x.command ?? "").includes("inbox-hook.mjs"));
+const HOME = () => process.env.IMA_HOME ?? homedir();
+const ours = (cmd: unknown) => String(cmd ?? "").includes("inbox-hook.mjs");
+// `|| true`: a missing node never shows up as a hook error in your session.
+const hookCmd = (flavor: string) => `node "${HOOK()}" ${flavor} 2>/dev/null || true`;
 
-/** Adds the SessionStart hook to Claude Code's user settings. Returns false if Claude Code isn't set up. */
-export function hookOn(): boolean {
-  const file = SETTINGS();
+/** Edits a JSON config in place. Skips agents that aren't installed and files we can't parse. */
+function editJson(file: string, edit: (s: any) => boolean): boolean {
   if (!existsSync(dirname(file))) return false;
   let s: any = {};
   if (existsSync(file)) {
     try {
       s = JSON.parse(readFileSync(file, "utf8"));
     } catch {
-      return false; // never rewrite a settings file we can't parse
+      return false; // never rewrite a config we can't parse
     }
   }
-  copyFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "guard", "inbox.mjs"), HOOK());
-  s.hooks ??= {};
-  s.hooks.SessionStart = (s.hooks.SessionStart ?? []).filter((h: any) => !isOurs(h));
-  // `|| true`: a missing node never shows up as a hook error in your session.
-  s.hooks.SessionStart.push({ matcher: "startup", hooks: [{ type: "command", command: `node "${HOOK()}" 2>/dev/null || true` }] });
-  writeFileSync(file, JSON.stringify(s, null, 2) + "\n");
+  if (edit(s)) writeFileSync(file, JSON.stringify(s, null, 2) + "\n");
   return true;
 }
 
-export function hookOff() {
-  const file = SETTINGS();
-  if (existsSync(file)) {
+/** Claude Code, Codex and Gemini CLI share one hook shape: hooks.SessionStart[].hooks[].command. */
+function sessionStart(file: () => string, flavor: string) {
+  const strip = (s: any) => {
+    const list: any[] = s.hooks?.SessionStart ?? [];
+    const kept = list.filter((g) => !g?.hooks?.some((h: any) => ours(h.command)));
+    if (kept.length === list.length) return false;
+    if (kept.length) s.hooks.SessionStart = kept;
+    else delete s.hooks.SessionStart;
+    if (!Object.keys(s.hooks).length) delete s.hooks;
+    return true;
+  };
+  return {
+    on: () =>
+      editJson(file(), (s) => {
+        strip(s);
+        s.hooks ??= {};
+        (s.hooks.SessionStart ??= []).push({ matcher: "startup", hooks: [{ type: "command", command: hookCmd(flavor) }] });
+        return true;
+      }),
+    off: () => editJson(file(), strip),
+  };
+}
+
+const OPENCODE_PLUGIN = () => join(HOME(), ".config", "opencode", "plugins", "improvemyagent-weekly.js");
+
+/**
+ * Where the weekly note shows up. Claude Code, Codex and Gemini CLI print it as a
+ * message to you; OpenCode as a toast. Cursor's hook can only talk to the agent,
+ * so there the agent mentions it in one line.
+ */
+const AGENTS: Record<string, { on: () => boolean; off: () => boolean }> = {
+  "Claude Code": sessionStart(() => join(HOME(), ".claude", "settings.json"), "user"),
+  Codex: sessionStart(() => join(process.env.CODEX_HOME ?? join(HOME(), ".codex"), "hooks.json"), "user"),
+  "Gemini CLI": sessionStart(() => join(HOME(), ".gemini", "settings.json"), "user"),
+  Cursor: {
+    on: () =>
+      editJson(join(HOME(), ".cursor", "hooks.json"), (s) => {
+        s.version ??= 1;
+        s.hooks ??= {};
+        s.hooks.sessionStart = (s.hooks.sessionStart ?? []).filter((h: any) => !ours(h.command));
+        s.hooks.sessionStart.push({ command: hookCmd("cursor") });
+        return true;
+      }),
+    off: () =>
+      editJson(join(HOME(), ".cursor", "hooks.json"), (s) => {
+        const list: any[] = s.hooks?.sessionStart ?? [];
+        const kept = list.filter((h) => !ours(h.command));
+        if (kept.length === list.length) return false;
+        if (kept.length) s.hooks.sessionStart = kept;
+        else delete s.hooks.sessionStart;
+        return true;
+      }),
+  },
+  OpenCode: {
+    on: () => {
+      if (!existsSync(join(HOME(), ".config", "opencode"))) return false;
+      mkdirSync(dirname(OPENCODE_PLUGIN()), { recursive: true });
+      writeFileSync(OPENCODE_PLUGIN(), opencodePlugin(INBOX()));
+      return true;
+    },
+    off: () => {
+      const had = existsSync(OPENCODE_PLUGIN());
+      rmSync(OPENCODE_PLUGIN(), { force: true });
+      return had;
+    },
+  },
+};
+
+export function opencodePlugin(inbox: string): string {
+  return `// Installed by \`improvemyagent --weekly\`. Shows the weekly note once, as a toast. Remove with --weekly off.
+import { readFileSync, rmSync } from "node:fs";
+
+export const ImproveMyAgentWeekly = async ({ client }) => ({
+  event: async ({ event }) => {
+    if (event.type !== "session.created") return;
     try {
-      const s = JSON.parse(readFileSync(file, "utf8"));
-      const list = s.hooks?.SessionStart;
-      if (Array.isArray(list) && list.some(isOurs)) {
-        s.hooks.SessionStart = list.filter((h: any) => !isOurs(h));
-        if (!s.hooks.SessionStart.length) delete s.hooks.SessionStart;
-        if (!Object.keys(s.hooks).length) delete s.hooks;
-        writeFileSync(file, JSON.stringify(s, null, 2) + "\n");
-      }
+      const { message } = JSON.parse(readFileSync(${JSON.stringify(inbox)}, "utf8"));
+      rmSync(${JSON.stringify(inbox)});
+      if (message) await client.tui.showToast({ body: { message: \`improvemyagent: \${message} · npx improvemyagent\`, variant: "info" } });
     } catch {}
-  }
+  },
+});
+`;
+}
+
+/** Installs the startup hook in every agent you have. Returns the ones it's in. */
+export function hookOn(): string[] {
+  copyFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "guard", "inbox.mjs"), HOOK());
+  return Object.entries(AGENTS).filter(([, a]) => a.on()).map(([name]) => name);
+}
+
+export function hookOff() {
+  for (const a of Object.values(AGENTS)) a.off();
   rmSync(HOOK(), { force: true });
   clearNote();
 }

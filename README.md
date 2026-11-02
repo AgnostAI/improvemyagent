@@ -41,7 +41,7 @@ Or, in Claude Code: `/plugin marketplace add AgnostAI/improvemyagent`, then `/pl
 --skip cursor    ignore some agents' sessions
 --backend codex  pick which agent runs the analysis (default: fastest one you're logged into)
 --deep           slower, also flags stale or conflicting lines in your files
---weekly         re-run it quietly every Monday; your next Claude Code session shows one line if something is new
+--weekly         re-run it quietly every Monday; your next agent session shows one line if something is new
 ```
 
 `npx improvemyagent --help` lists the rest.

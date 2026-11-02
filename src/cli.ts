@@ -73,7 +73,7 @@ Usage: npx improvemyagent [options]
                     opencode or anthropic-api (default: the first one installed)
   --skip <tools>    skip some tools, e.g. --skip cursor,gemini
                     (reads Claude Code, Codex, OpenCode, Gemini CLI and Cursor)
-  --weekly          re-run it quietly every Monday; your next Claude Code session shows
+  --weekly          re-run it quietly every Monday; your next agent session shows
                     one line if there's something new (never applies; --weekly off to stop)
 
 Everything runs locally through the coding agent you already use. Nothing is uploaded.`);
@@ -612,8 +612,10 @@ function weekly(off: boolean) {
   if (off) return p.outro(weeklyOff() ? "Weekly check-in is off." : "Weekly check-in wasn't on.");
   const version = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
   const when = weeklyOn(version);
-  const where = hookOn() ? "your next Claude Code session opens with one line about it" : "run npx improvemyagent to see it";
-  p.outro(`${when}, improvemyagent quietly re-reads your week. If there's something new, ${where}.\n   No pop-ups, and it never applies anything. Stop it with: npx improvemyagent --weekly off`);
+  const agents = hookOn();
+  const where = agents.length ? `your next session in ${agents.join(", ")} opens with one line about it` : "run npx improvemyagent to see it";
+  const codex = agents.includes("Codex") ? "\n   Codex asks you to approve new hooks once: run /hooks in Codex and trust improvemyagent." : "";
+  p.outro(`${when}, improvemyagent quietly re-reads your week. If there's something new, ${where}.\n   No pop-ups, and it never applies anything. Stop it with: npx improvemyagent --weekly off${codex}`);
 }
 
 main().catch((e) => {
