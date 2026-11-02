@@ -1,0 +1,15 @@
+{
+  "name": "improvemyagent",
+  "description": "improvemyagent: turn the corrections you keep repeating into AGENTS.md rules.",
+  "owner": {
+    "name": "Agnost AI",
+    "url": "https://agnost.ai"
+  },
+  "plugins": [
+    {
+      "name": "improvemyagent",
+      "source": "./",
+      "description": "Finds the corrections you keep repeating to your coding agent and turns them into rules in AGENTS.md / CLAUDE.md."
+    }
+  ]
+}

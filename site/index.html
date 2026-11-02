@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>improvemyagent</title>
+<meta name="description" content="Stop telling your agent the same thing twice. Reads your Claude Code, Codex, Cursor, Gemini and OpenCode history and writes what you keep correcting into AGENTS.md.">
+<meta property="og:title" content="improvemyagent">
+<meta property="og:description" content="Stop telling your agent the same thing twice. npx improvemyagent">
+<meta property="og:url" content="https://improvemyagent.com/">
+<meta property="og:image" content="https://improvemyagent.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://improvemyagent.com/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090909;--fg:#ededed;--muted:#8a8a8a;--faint:#5c5c60;--line:#ffffff14;--panel:#0d0d0f;--ok:#28c840;--scope:#7dcfdb;--mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--fg);font-family:var(--mono);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--fg);color:var(--bg)}
+
+.shell{position:relative;isolation:isolate;height:100svh;overflow:hidden;display:flex;flex-direction:column}
+/* light behind the terminal, fading to black on the left, grain on top */
+.light{position:absolute;inset:3.5rem 0 0;z-index:-2;pointer-events:none}
+.light:before{content:"";position:absolute;inset:0;background:radial-gradient(58% 62% at 70% 50%,#ffffffd6 0%,#ffffff70 30%,#ffffff1c 56%,#0000 74%),radial-gradient(110% 86% at 70% 48%,#ffffff52,#7878781a 54%,#0000 82%)}
+.light:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--bg) 0%,#090909eb 26%,#09090980 50%,#09090914 76%,transparent 100%),linear-gradient(180deg,var(--bg) 0%,transparent 14%,transparent 80%,var(--bg) 100%)}
+.grain{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;mix-blend-mode:overlay;opacity:.5}
+
+nav,footer{flex:none;display:flex;align-items:center;gap:1rem;padding:0 max(1rem,50vw - 552px);background:#090909db;backdrop-filter:blur(12px)}
+nav{height:3.5rem;border-bottom:1px solid var(--line)}
+footer{height:2.75rem;border-top:1px solid var(--line);font-size:.7rem;color:var(--faint)}
+.brand{display:flex;align-items:center;gap:.65rem;font-size:.875rem;font-weight:600;letter-spacing:-.02em}
+.mark{width:.875rem;height:.875rem;background:var(--fg)}
+nav .by{margin-left:auto;font-size:.75rem;color:var(--muted);transition:color .14s}
+nav .by b{color:var(--fg);font-weight:500}
+nav .by:hover{color:var(--fg)}
+.short{display:none}
+footer .links{margin-left:auto;display:flex;gap:1.25rem}
+footer a{transition:color .14s}footer a:hover{color:var(--fg)}
+
+.split{flex:1;min-height:0;width:min(100% - 2rem,1104px);margin:0 auto;display:grid;grid-template-columns:minmax(0,.84fr) minmax(0,1.16fr);gap:4rem;align-items:center;padding:1.5rem 0}
+
+.left{display:flex;flex-direction:column;align-items:flex-start;gap:1.4rem;animation:in .7s cubic-bezier(.22,1,.36,1) both}
+h1{font-size:clamp(3.2rem,6.2vw,4.8rem);font-weight:600;line-height:.94;letter-spacing:-.065em;color:#edededf2}
+h1 span{display:block}
+.lede{font-size:clamp(1.05rem,1.8vw,1.22rem);line-height:1.3;color:#edededb8;max-width:23rem;text-wrap:pretty}
+.what{font-size:.78rem;line-height:1.65;color:var(--muted);max-width:25rem;text-wrap:pretty}
+.what b{color:var(--fg);font-weight:500}
+.cta{display:inline-flex;align-items:center;gap:.6rem;background:var(--fg);color:var(--bg);border:0;padding:.75rem 1rem;font:inherit;font-size:.875rem;font-weight:500;cursor:pointer;transition:background .14s}
+.cta:hover{background:#fff}
+.cta .g{opacity:.5}
+.agents{display:flex;gap:.42rem}
+.tile{width:2.5rem;height:2.5rem;display:grid;place-items:center;border:1px solid #ffffff1a;background:#09090933;backdrop-filter:blur(8px)}
+.tile svg{width:1.05rem;height:1.05rem;fill:#ededed}
+
+.term{height:min(28rem,calc(100svh - 10.25rem));display:flex;flex-direction:column;background:var(--panel);border:1px solid #ffffff1a;box-shadow:0 44px 140px -34px #000000f2;animation:in .7s cubic-bezier(.22,1,.36,1) .12s both;min-width:0}
+.bar{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid #ffffff14}
+.dots{display:flex;gap:.5rem}.dots i{width:.68rem;height:.68rem;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.tabs{display:flex;gap:.35rem}
+.tabs button{font:inherit;font-size:.68rem;text-transform:uppercase;letter-spacing:.02em;color:#ffffff61;background:0 0;border:0;height:1.75rem;padding:0 .65rem;cursor:pointer}
+.tabs button:hover{color:#ffffffb0}
+.tabs button.on{color:#ffffffe6;background:#ffffff1a}
+.screen{flex:1;min-height:0;padding:1.3rem 1.25rem;font-size:.76rem;line-height:1.68;color:#d4d4d8;white-space:pre-wrap;overflow:hidden}
+.foot{display:flex;justify-content:space-between;gap:1rem;padding:.65rem 1.25rem;border-top:1px solid #ffffff0f;font-size:.7rem;color:var(--faint);font-variant-numeric:tabular-nums}
+.foot button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}.foot button:hover{color:var(--fg)}
+.f{color:var(--faint)}.m{color:var(--muted)}.b{color:#fff;font-weight:600}.ok{color:var(--ok)}.sc{color:var(--scope)}.w{color:#febc2e}
+.v{display:inline-block;vertical-align:top;max-width:calc(100% - 4ch);white-space:normal}
+.cur{display:inline-block;width:.55em;height:1.05em;background:var(--fg);vertical-align:-.16em;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+@media (max-width:900px){
+  .shell{height:auto;min-height:100svh;overflow:visible}
+  .split{grid-template-columns:1fr;gap:2.5rem;padding:2.5rem 0 3rem}
+  .term{height:30rem}
+  .screen{white-space:pre;overflow-x:auto;font-size:.7rem}
+  .v{max-width:none;white-space:pre}
+  .grain{opacity:.3}
+  .light{display:none}
+  .long{display:none}.short{display:inline}
+  footer > span:first-child{display:none}
+}
+@media (prefers-reduced-motion:reduce){.left,.term,.v{display:inline-block;vertical-align:top;max-width:calc(100% - 4ch);white-space:normal}
+.cur{animation:none}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <div class="light" aria-hidden="true"></div>
+  <svg class="grain" aria-hidden="true" preserveAspectRatio="none"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
+
+  <nav>
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>improvemyagent</a>
+    <a class="by" href="https://agnost.ai"><span class="long">see what users keep correcting in your AI agents → <b>agnost ai</b>, backed by y combinator</span><span class="short">by <b>agnost ai</b></span></a>
+  </nav>
+
+  <section class="split">
+    <div class="left">
+      <h1><span>improve</span><span>myagent</span></h1>
+      <p class="lede">Stop telling your agent the same thing twice.</p>
+      <p class="what">Reads your local agent history, finds what you keep correcting, and writes it into <b>AGENTS.md</b>. About <b>8&nbsp;seconds</b>. Nothing is uploaded, and you approve every line.</p>
+      <button class="cta" id="copy" type="button"><span class="g">$</span><span id="cta-label">npx improvemyagent</span><span class="g">⧉</span></button>
+      <div class="agents" aria-label="Works with Claude Code, Codex, Cursor, Gemini CLI and OpenCode"><span class="tile" title="Claude Code"><svg viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false"><path d="M21 10.5h3v3h-3v3h-1.5v3H18v-3h-1.5v3H15v-3H9v3H7.5v-3H6v3H4.5v-3H3v-3H0v-3h3v-6h18Zm-15 0h1.5v-3H6Zm10.5 0H18v-3h-1.5z"></path></svg></span><span class="tile" title="Codex"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"></path></svg></span><span class="tile" title="Cursor"><svg viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false"><path d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"></path></svg></span><span class="tile" title="Gemini"><svg viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false"><path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81"></path></svg></span><span class="tile" title="OpenCode"><svg viewBox="0 0 24 24" role="img" aria-hidden="true" focusable="false"><path d="M22 24H2V0h20zM17 4.8H7v14.4h10z"></path></svg></span></div>
+    </div>
+
+    <div class="term" aria-label="improvemyagent running in a terminal">
+      <div class="bar">
+        <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="tabs" role="tablist">
+          <button class="on" data-tab="run" type="button" role="tab" aria-selected="true">First run</button>
+          <button data-tab="check" type="button" role="tab" aria-selected="false">A week later</button>
+        </div>
+      </div>
+      <div class="screen" id="screen"></div>
+      <div class="foot"><span id="clock">0.0s</span><button id="replay" type="button">replay ↻</button></div>
+    </div>
+  </section>
+  <footer>
+    <span>MIT · runs on your machine · no telemetry</span>
+    <span class="links"><a href="https://github.com/ShubhamPalriwala/improvemyagent">github ↗</a><a href="https://www.npmjs.com/package/improvemyagent">npm ↗</a><a href="https://agnost.ai">built by agnost ai ↗</a></span>
+  </footer>
+</main>
+
+<script>
+const S = (c, t) => `<span class="${c}">${t}</span>`;
+const G = S("f", "│");
+const rule = (n, lead, rest, count, scope) => `${G}  ${S("b", n + ".")}  ${S("b", lead)} ${rest}  ${S("m", count + "×")} ${S("sc", "(" + scope + ")")}`;
+// The real output, replayed at real speed: first rule at ~4 s, done at ~8 s.
+const RUN = [
+  [0, `${S("ok", "$")} npx improvemyagent`],
+  [450, `${S("f", "┌")}  ${S("b", "improvemyagent")}\n${G}`],
+  [750, `${S("f", "◒")}  Reading 1,042 messages · 31 Claude Code + 12 Codex sessions`, "spin"],
+  [4000, `${S("f", "◇")}  1,042 messages · 31 Claude Code + 12 Codex sessions\n${G}`, "done"],
+  [4150, rule(1, "Use pnpm, not npm or yarn,", "for installs and scripts", 8, "webapp")],
+  [5000, rule(2, "Never edit tests to make them pass;", "fix the code", 6, "global")],
+  [5850, rule(3, "Make the smallest change", "that solves it", 11, "global")],
+  [6700, rule(4, "Run only the tests", "for files you changed", 5, "webapp")],
+  [7550, rule(5, "Ask before migrations,", "deploys or pushing to main", 4, "global")],
+  [8200, `${G}\n${S("f", "└")}  Add to AGENTS.md:  ${S("ok b", "npx improvemyagent --apply 1,2")}  ${S("f", "or")}  ${S("ok b", "--apply all")}\n   ${S("f", "Receipts: ~/.improvemyagent/reports/2026-11-02.md")}`],
+];
+// Next week it checks your real sessions: did the rules you added stop the corrections?
+const v = (c, t) => `    <span class="v ${c}">${t}</span>`;
+const CHECK = [
+  [0, `${S("ok", "$")} npx improvemyagent`],
+  [450, `${S("f", "┌")}  ${S("b", "improvemyagent")}\n${G}`],
+  [750, `${S("f", "◒")}  Reading 1,318 messages · 52 Claude Code + 18 Codex sessions`, "spin"],
+  [3900, `${S("f", "◇")}  1,318 messages · 52 Claude Code + 18 Codex sessions`, "done"],
+  [6800, `\n${S("b", "Your rules")}\n  Use pnpm, not npm or yarn ${S("f", "(applied Oct 26)")}\n${v("ok", "✓ working: 8× in 31 sessions before → 0× in 27 since")}`],
+  [7000, `  Never edit tests to make them pass; fix the code ${S("f", "(applied Oct 26)")}\n${v("ok", "✓ working: 6× in 31 sessions before → 1× in 27 since")}`],
+  [7200, `  Make the smallest change that solves it ${S("f", "(applied Oct 26)")}\n${v("w", "✗ not sticking: 11× in 31 sessions before → 7× in 27 since. Reword it or make it a hook")}`],
+  [7700, `\n${S("f", "└")}  No repeated corrections found. Your agents are behaving!`],
+];
+
+const screen = document.getElementById("screen");
+const clock = document.getElementById("clock");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let timers = [];
+let tick;
+function play(steps) {
+  timers.forEach(clearTimeout);
+  clearInterval(tick);
+  timers = [];
+  const out = [];
+  let spinning = false;
+  const end = steps[steps.length - 1][0];
+  const t0 = performance.now();
+  if (!reduce) tick = setInterval(() => (clock.textContent = Math.min((performance.now() - t0) / 1000, end / 1000).toFixed(1) + "s"), 100);
+  for (const [at, line, kind] of steps) {
+    timers.push(setTimeout(() => {
+      if (spinning && kind === "done") out.pop();
+      spinning = kind === "spin";
+      out.push(line);
+      screen.innerHTML = out.join("\n") + (at === end ? "" : `\n<span class="cur"></span>`);
+      if (at === end) { clearInterval(tick); clock.textContent = (end / 1000).toFixed(1) + "s"; }
+    }, reduce ? 0 : at));
+  }
+}
+let current = RUN;
+const tabs = document.querySelectorAll(".tabs button");
+tabs.forEach((b) =>
+  b.addEventListener("click", () => {
+    tabs.forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b); });
+    current = b.dataset.tab === "run" ? RUN : CHECK;
+    play(current);
+  }),
+);
+document.getElementById("replay").addEventListener("click", () => play(current));
+if (location.hash === "#week") tabs[1].click();
+else play(RUN);
+
+const label = document.getElementById("cta-label");
+document.getElementById("copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText("npx improvemyagent"); } catch {}
+  label.textContent = "copied";
+  setTimeout(() => (label.textContent = "npx improvemyagent"), 1400);
+});
+</script>
+</body>
+</html>

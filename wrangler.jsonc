@@ -1,0 +1,13 @@
+// improvemyagent.com: the landing page in site/, served as static assets.
+// Deployed by .github/workflows/deploy-site.yml on every push to main.
+{
+  "name": "improvemyagent",
+  "account_id": "40a25834bab84567f2dc6774ef6bb8c7",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./site" },
+  "routes": [
+    { "pattern": "improvemyagent.com", "custom_domain": true },
+    { "pattern": "www.improvemyagent.com", "custom_domain": true }
+  ],
+  "workers_dev": false
+}

@@ -1,0 +1,19 @@
+{
+  "name": "improvemyagent",
+  "version": "0.2.1",
+  "description": "Finds the corrections you keep repeating to your coding agent and turns them into rules in AGENTS.md / CLAUDE.md.",
+  "author": {
+    "name": "Agnost AI",
+    "url": "https://agnost.ai"
+  },
+  "homepage": "https://improvemyagent.com",
+  "repository": "https://github.com/ShubhamPalriwala/improvemyagent",
+  "license": "MIT",
+  "keywords": [
+    "agents-md",
+    "claude-md",
+    "codex",
+    "corrections"
+  ],
+  "icon": ".claude-plugin/icon.png"
+}

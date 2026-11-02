@@ -1,0 +1,5 @@
+{"type":"user","sessionId":"s1","cwd":"/tmp/x","timestamp":"2026-10-01T10:00:00Z","message":{"role":"user","content":"<system_instruction>harness</system_instruction>\nadd lodash"}}
+{"type":"assistant","sessionId":"s1","timestamp":"2026-10-01T10:00:05Z","message":{"model":"claude-x","content":[{"type":"text","text":"Installing."},{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"npm install lodash"}}]}}
+{"type":"user","sessionId":"s1","timestamp":"2026-10-01T10:00:06Z","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"The user doesn't want to proceed with this tool use.","is_error":true}]}}
+{"type":"user","sessionId":"s1","timestamp":"2026-10-01T10:00:07Z","message":{"content":[{"type":"text","text":"[Request interrupted by user for tool use]"}]}}
+{"type":"user","sessionId":"s1","timestamp":"2026-10-01T10:00:09Z","message":{"content":"no use pnpm"}}
