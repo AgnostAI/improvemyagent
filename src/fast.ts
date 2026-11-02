@@ -19,7 +19,7 @@ SEEN | <applied rule id> | <ids>
 RULE lines, best first, at most {MAX}:{FOCUS}
 - <scope> is "global" or one repo name exactly as it appears in the lines.
 - <rule> is ONE instruction to the agent, at most 16 words, specific to this developer (the tools, places, names and habits they mention). Never generic advice any agent already follows.
-- If it is the same as a rule under SAVED RULES, write that rule's id (like r:1a2b3c4d) as <rule> instead of rewriting it.
+- SAVED RULES were suggested on earlier runs; keep the list stable. If a saved rule (in your topic) is still among the strongest, write its id (like r:1a2b3c4d) as <rule> instead of rewriting it, and only leave it out for something clearly stronger.
 - <count> is roughly how many replies show it (a number).
 - <ids> are 2 to 4 reply ids that show it, comma-separated. Only rules backed by 2+ replies from different moments; skip one-off task instructions.
 - Never suggest anything already covered by EXISTING INSTRUCTIONS, APPLIED RULES or DISMISSED.
