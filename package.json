@@ -1,6 +1,6 @@
 {
   "name": "improvemyagent",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Learns from every time you corrected your coding agent (Claude Code, Codex, OpenCode, Gemini CLI, Cursor) and turns it into rules in AGENTS.md / CLAUDE.md.",
   "type": "module",
   "bin": {

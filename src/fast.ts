@@ -137,6 +137,8 @@ export function startClaudeStream(system: string, model = "sonnet"): Stream {
   child.stderr.on("data", (d) => (stderr += d));
   const closed = new Promise<void>((resolve) => child.on("close", () => resolve()));
   child.on("error", (e) => (error = String(e.message)));
+  // If claude exits before reading the prompt, report its error instead of crashing on EPIPE.
+  child.stdin.on("error", () => {});
   return {
     async run(prompt, onLine) {
       emit = onLine;
@@ -198,6 +200,7 @@ export function startCodexStream(system: string, choice = pickCodexModel()): Str
   child.stderr.on("data", (d) => (stderr += d));
   const closed = new Promise<number>((resolve) => child.on("close", (code) => resolve(code ?? 1)));
   child.on("error", (e) => (stderr += e.message));
+  child.stdin.on("error", () => {});
   return {
     async run(prompt, onLine) {
       child.stdin.end(prompt);

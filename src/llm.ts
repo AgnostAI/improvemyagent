@@ -110,6 +110,7 @@ function runCodex<T>(c: LlmCall): Promise<T> {
         rmSync(dir, { recursive: true, force: true });
       }
     });
+    child.stdin.on("error", () => {}); // an early exit is reported by the close handler
     child.stdin.end(prompt);
   });
 }
@@ -156,6 +157,7 @@ function runClaude<T>(c: LlmCall): Promise<T> {
         reject(new Error(`claude failed: ${(err || out).slice(0, 300)}`));
       }
     });
+    child.stdin.on("error", () => {}); // an early exit is reported by the close handler
     child.stdin.end(c.prompt);
   });
 }
@@ -320,6 +322,7 @@ function runTextCli<T>(c: LlmCall, b: Backend): Promise<T> {
         reject(new Error(`${b} failed (${code}): ${(e as Error).message} ${err.slice(-200)}`));
       }
     });
+    child.stdin.on("error", () => {}); // an early exit is reported by the close handler
     child.stdin.end(viaStdin ? prompt : "");
   });
 }

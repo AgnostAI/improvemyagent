@@ -1,6 +1,6 @@
 {
   "name": "improvemyagent",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Finds the corrections you keep repeating to your coding agent and turns them into rules in AGENTS.md / CLAUDE.md.",
   "author": {
     "name": "Agnost AI",
