@@ -26,7 +26,7 @@ import { action, groupByDestination, renderCompact, renderOne, renderHeader, ren
 import { available, BACKENDS, llm, probe, setBackend, setFallbacks, usage, type Backend } from "./llm.ts";
 import { STATE_DIR } from "./paths.ts";
 import { createHash } from "node:crypto";
-import { truncate } from "./clean.ts";
+import { redact, truncate } from "./clean.ts";
 import { clearNote, hookOn, leaveNote, weeklyIsOn, weeklyOff, weeklyOn } from "./schedule.ts";
 import { CODEX_RECENT, FOCUS, fastPrompt, parseLine, similar, startApiStream, startClaudeStream, startCodexStream, systemFor, type Stream } from "./fast.ts";
 
@@ -355,11 +355,12 @@ async function fastRun(o: { sessions: Session[]; installed: Backend[]; streams?:
   const known = store.map((x) => ({ id: x.id, text: x.text }));
   const saved = store.filter((x) => x.lifecycle === "suggested");
   const appliedRules = store.filter((x) => x.lifecycle === "applied");
-  const existing = files
-    .filter((f) => /md|rule|prompt|memory/.test(f.kind))
-    .map((f) => `# ${tilde(f.path)}\n${truncate(f.content, 1500)}`)
-    .join("\n\n")
-    .slice(0, 6000);
+  const existing = redact(
+    files
+      .filter((f) => /md|rule|prompt|memory/.test(f.kind))
+      .map((f) => `# ${tilde(f.path)}\n${truncate(f.content, 1500)}`)
+      .join("\n\n"),
+  ).slice(0, 6000);
   const promptFor = (recent?: number) => fastPrompt({ cands: candidates, existing, saved, applied: appliedRules, dismissed: store.filter((x) => x.lifecycle === "dismissed"), recent });
 
   const perTool = new Map<string, number>();

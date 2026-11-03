@@ -35,21 +35,32 @@ const SECRET_PATTERNS: RegExp[] = [
   /AKIA[0-9A-Z]{16}/g,
   /xox[baprs]-[A-Za-z0-9-]{10,}/g,
   /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
-  /(?<=\b(?:password|passwd|pwd|secret|token|api[_-]?key|apikey)\s*[:=]\s*)\S+/gi,
   /(?<=Bearer\s+)[A-Za-z0-9._~+/-]{16,}=*/g,
   /(?<=:\/\/[^\s:/@]+:)[^\s@]+(?=@)/g,
 ];
 
-/** Long opaque tokens: mixed case + digits, no word separators. */
-const OPAQUE = /(?<![\w/.-])[A-Za-z0-9_]{20,}={0,2}(?![\w/.-])/g;
+// Unquoted values run through whitespace, even across compact-form delimiters.
+const SECRET_ASSIGNMENT = /(\b(?:password|passwd|pwd|secret|token|api[_-]?key|apikey)["']?\s*[:=]\s*)(?!\[REDACTED\])(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S+)/gi;
+
+const JSON_SCALAR_SECRET = /("(?:password|passwd|pwd|secret|token|api[_-]?key|apikey)"\s*:\s*)(?:-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)(?=\s*(?:,\s*"|[}\]]+\s*$))/gi;
+
+/** Opaque tokens, excluding hex identifiers and UUIDs commonly found in histories. */
+const OPAQUE = /(?<![\w/.-])[A-Za-z0-9_-]{20,}={0,2}(?![\w/.-])/g;
 
 export function redact(text: string): string {
-  let out = text;
+  let out = text.replace(JSON_SCALAR_SECRET, "$1[REDACTED]").replace(SECRET_ASSIGNMENT, "$1[REDACTED]");
   for (const p of SECRET_PATTERNS) out = out.replace(p, "[REDACTED]");
-  return out.replace(OPAQUE, (m) => (/[a-z]/.test(m) && /[A-Z]/.test(m) && /\d/.test(m) ? "[REDACTED]" : m));
+  return out.replace(OPAQUE, (m) => {
+    if (/^[a-f0-9]+$/i.test(m) || /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(m)) return m;
+    // Word-separated names may have version or issue numbers; opaque segments mix digits into letters.
+    if (/^[A-Za-z]+\d*(?:-(?:[A-Za-z]+\d*|\d+))+$/.test(m)) return m;
+    const mixed = /[a-z]/.test(m) && /[A-Z]/.test(m) && /\d/.test(m);
+    const lower = m.length >= 24 && /^[a-z0-9_-]+$/.test(m) && /[g-z]/.test(m) && new Set(m.match(/[a-z]/g)).size >= 6 && new Set(m.match(/\d/g)).size >= 4;
+    return mixed || lower ? "[REDACTED]" : m;
+  });
 }
 
 export function truncate(text: string, max: number): string {
-  const t = text.replace(/\s+/g, " ").trim();
+  const t = redact(text).replace(/\s+/g, " ").trim();
   return t.length <= max ? t : t.slice(0, max - 1) + "…";
 }

@@ -1,4 +1,5 @@
 import type { ToolCall } from "../types.ts";
+import { redact } from "../clean.ts";
 
 /** Short human form of a tool's input: the command, the path, or truncated JSON. */
 export function summarize(input: unknown): string {
@@ -7,7 +8,7 @@ export function summarize(input: unknown): string {
     try {
       v = JSON.parse(v);
     } catch {
-      return v.slice(0, 160);
+      return redact(v).slice(0, 160);
     }
   }
   if (!v || typeof v !== "object") return "";
@@ -16,7 +17,7 @@ export function summarize(input: unknown): string {
     if (typeof x === "string") return x;
     if (Array.isArray(x) && x.every((y) => typeof y === "string")) return x.join(" ");
   }
-  return JSON.stringify(v).slice(0, 160);
+  return redact(JSON.stringify(v)).slice(0, 160);
 }
 
 const SHELL_TOOLS = /^(bash|shell|run_shell_command|run_terminal_cmd|run_terminal_command|terminal|exec_command)$/i;
