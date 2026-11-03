@@ -14,7 +14,7 @@ function describeAction(turn: Session["turns"][number]): string {
     });
     parts.push(`tools → ${calls.join(" | ")}`);
   }
-  if (turn.text) parts.push(`said → ${truncate(turn.text.split("\n").slice(-6).join(" "), 500)}`);
+  if (turn.text) parts.push(`said → ${truncate(redact(turn.text).split("\n").slice(-6).join(" "), 500)}`);
   if (turn.interrupted) parts.push("[USER INTERRUPTED THIS TURN]");
   return redact(parts.join("\n"));
 }
@@ -45,7 +45,7 @@ export function candidatesFrom(sessions: Session[]): Candidate[] {
           userText: redact(text),
           agentAction: describeAction(prev),
           agentFix: s.turns[i + 1]?.role === "assistant" ? describeAction(s.turns[i + 1]) : "",
-          priorRequest: redact(truncate(lastRequest, 400)),
+          priorRequest: truncate(lastRequest, 400),
           hardSignals,
           recentCommands: prev.toolCalls.filter((c) => c.name === "Bash").map((c) => c.summary),
         });

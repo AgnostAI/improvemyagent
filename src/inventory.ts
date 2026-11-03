@@ -6,6 +6,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { InstructionFile, Session } from "./types.ts";
 import { resolveRepo } from "./repo.ts";
+import { redact } from "./clean.ts";
 import { conductor } from "./conductor.ts";
 
 const HOME = homedir();
@@ -35,7 +36,7 @@ function skillSummaries(dir: string): string | undefined {
     const skill = read(join(dir, name, "SKILL.md"));
     if (!skill) continue;
     const desc = skill.match(/^description:\s*(.+)$/m)?.[1] ?? "";
-    lines.push(`- ${name}: ${desc.slice(0, 200)}`);
+    lines.push(`- ${name}: ${redact(desc).slice(0, 200)}`);
   }
   return lines.length ? lines.join("\n") : undefined;
 }

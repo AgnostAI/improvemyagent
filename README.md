@@ -10,7 +10,7 @@ npx improvemyagent
 
 It reads the session history your coding agents already keep on your laptop (Claude Code, Codex, OpenCode, Gemini CLI, Cursor), finds the corrections you keep repeating, and turns them into a few rules for `AGENTS.md`. It takes about 8 seconds.
 
-- **Private.** It runs on the agent login you already have. You don't need an API key, nothing is uploaded, and there's no telemetry. Secrets are redacted before anything reaches the model.
+- **Data use.** Selected excerpts are sent to the model provider behind your agent login, after best-effort secret redaction. There's no telemetry.
 - **Grounded.** A rule only shows up if you corrected the same thing in separate sessions. AI-written context files without that grounding tend to make agents worse ([ETH Zurich, 2026](https://arxiv.org/abs/2602.11988)).
 - **One file.** Each rule is written once to `AGENTS.md`, and `CLAUDE.md` / `GEMINI.md` import it with `@AGENTS.md`.
 - **Tracked.** Run it again later, or turn on `--weekly`, to see whether each rule you applied actually stopped the mistake.

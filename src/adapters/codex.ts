@@ -3,7 +3,7 @@ import { forEachJsonLine } from "../lines.ts";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { Session, ToolCall, Turn } from "../types.ts";
-import { stripInjected } from "../clean.ts";
+import { redact, stripInjected } from "../clean.ts";
 
 const ROOTS = [join(homedir(), ".codex", "sessions"), join(homedir(), ".codex", "archived_sessions")];
 
@@ -110,7 +110,7 @@ export function parseCodexSession(file: string): Session | null {
       const raw = p.arguments ?? p.input ?? "";
       const cmds = commandsFrom(p.name, typeof raw === "string" ? raw : JSON.stringify(raw));
       const t = assistant(ev.timestamp);
-      const summaries = cmds.length ? cmds : [String(typeof raw === "string" ? raw : JSON.stringify(raw)).slice(0, 160)];
+      const summaries = cmds.length ? cmds : [redact(String(typeof raw === "string" ? raw : JSON.stringify(raw))).slice(0, 160)];
       for (const s of summaries) {
         const call: ToolCall = { name: cmds.length ? "Bash" : p.name, summary: s, isError: false, rejected: false };
         t.toolCalls.push(call);

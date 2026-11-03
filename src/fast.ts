@@ -8,7 +8,7 @@ import { join } from "node:path";
 import type { Candidate } from "./types.ts";
 import type { StoredRule } from "./store.ts";
 import { STATE_DIR } from "./paths.ts";
-import { truncate } from "./clean.ts";
+import { redact, truncate } from "./clean.ts";
 
 const BASE = `You read every reply a developer sent to their AI coding agents. Each line has an id, the [repo], what the agent had just done, and the developer's reply.
 Find the corrections and preferences the developer keeps repeating, and write the rules that would stop the agent making those mistakes.
@@ -96,7 +96,7 @@ export function startClaudeStream(system: string, model = "sonnet"): Stream {
   const lean = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN ? ["--bare"] : ["--setting-sources", "", "--strict-mcp-config", "--disable-slash-commands"];
   const child = spawn(
     "claude",
-    ["-p", ...lean, "--no-session-persistence", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--model", model, "--effort", "low", "--system-prompt", system, "--tools", ""],
+    ["-p", ...lean, "--no-session-persistence", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--model", model, "--effort", "low", "--system-prompt", redact(system), "--tools", ""],
     { cwd: STATE_DIR, stdio: ["pipe", "pipe", "pipe"] },
   );
   let raw = "";
@@ -142,7 +142,7 @@ export function startClaudeStream(system: string, model = "sonnet"): Stream {
   return {
     async run(prompt, onLine) {
       emit = onLine;
-      child.stdin.end(prompt);
+      child.stdin.end(redact(prompt));
       await closed;
       flush(true);
       if (error || (!text && stderr)) throw new Error(error || stderr.slice(-300));
@@ -191,7 +191,7 @@ export function startCodexStream(system: string, choice = pickCodexModel()): Str
   const dir = mkdtempSync(join(tmpdir(), "ima-cx-"));
   const instructions = join(dir, "instructions.md");
   const out = join(dir, "out.txt");
-  writeFileSync(instructions, system);
+  writeFileSync(instructions, redact(system));
   const args = ["exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-c", `model_instructions_file="${instructions}"`, "-c", `model_reasoning_effort="${choice.effort}"`, "-o", out, "-C", dir, "-"];
   if (choice.model) args.splice(1, 0, "-m", choice.model);
   // A private Codex home with only the login: no MCP servers, plugins or AGENTS.md to load.
@@ -203,7 +203,7 @@ export function startCodexStream(system: string, choice = pickCodexModel()): Str
   child.stdin.on("error", () => {});
   return {
     async run(prompt, onLine) {
-      child.stdin.end(prompt);
+      child.stdin.end(redact(prompt));
       const code = await closed;
       let text = "";
       try {
@@ -232,8 +232,8 @@ export function startApiStream(system: string): Stream {
       const stream = client.messages.stream({
         model: "claude-sonnet-5-5",
         max_tokens: 2000,
-        system,
-        messages: [{ role: "user", content: prompt }],
+        system: redact(system),
+        messages: [{ role: "user", content: redact(prompt) }],
         // Sonnet 5.5 turns thinking off with between_tools (accepted at effort high or below).
         thinking: { type: "between_tools" } as any,
         output_config: { effort: "low" },

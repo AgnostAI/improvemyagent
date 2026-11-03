@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { redact } from "./clean.ts";
 import { STATE_DIR } from "./paths.ts";
 
 export interface LlmCall {
@@ -50,6 +51,7 @@ export function getBackend(): Backend {
 }
 
 function runOnce<T>(c: LlmCall, b: Backend = backend): Promise<T> {
+  c = { ...c, system: redact(c.system), prompt: redact(c.prompt) };
   switch (b) {
     case "claude":
       return runClaude<T>(c);

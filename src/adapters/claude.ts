@@ -3,7 +3,7 @@ import { forEachJsonLine } from "../lines.ts";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { Session, ToolCall, Turn } from "../types.ts";
-import { stripInjected } from "../clean.ts";
+import { redact, stripInjected } from "../clean.ts";
 
 const ROOT = join(homedir(), ".claude", "projects");
 const REJECTED = "doesn't want to proceed with this tool use";
@@ -30,7 +30,7 @@ function summarizeInput(name: string, input: any): string {
   if (typeof input.pattern === "string") return input.pattern;
   if (typeof input.url === "string") return input.url;
   if (typeof input.description === "string") return input.description;
-  return JSON.stringify(input).slice(0, 160);
+  return redact(JSON.stringify(input)).slice(0, 160);
 }
 
 function textOf(content: any): string {

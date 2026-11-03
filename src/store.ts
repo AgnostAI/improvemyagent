@@ -5,6 +5,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Baseline, Classified, Rule } from "./types.ts";
 import { STATE_DIR } from "./paths.ts";
+import { redact } from "./clean.ts";
 
 export type Lifecycle = "suggested" | "applied" | "dismissed" | "removed";
 
@@ -32,7 +33,10 @@ export function saveRules(rules: StoredRule[]) {
 
 /** Keeps receipts small but self-contained (Claude Code deletes old logs after ~30 days). */
 function slim(e: Classified): Classified {
-  const cut = (s: string | undefined, n: number) => (!s ? "" : s.length > n ? s.slice(0, n) + "…" : s);
+  const cut = (s: string | undefined, n: number) => {
+    const text = redact(s ?? "");
+    return text.length > n ? text.slice(0, n) + "…" : text;
+  };
   return { ...e, agentAction: cut(e.agentAction, 300), agentFix: cut(e.agentFix, 200), priorRequest: cut(e.priorRequest, 300), recentCommands: (e.recentCommands ?? []).slice(-5) };
 }
 
